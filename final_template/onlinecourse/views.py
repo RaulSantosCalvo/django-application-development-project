@@ -118,7 +118,9 @@ def submit(request, course_id):
     if is_enrolled and user.is_authenticated:
         enrollment = Enrollment.objects.get(user=user, course=course)
         choices = extract_answers(request)
-        submission = Submission.objects.create(enrollment=enrollment, choices=choices)
+        submitted_choices = Choice.objects.filter(pk__in=choices)
+        submission = Submission.objects.create(enrollment=enrollment)
+        submission.choices.set(submitted_choices)
         # show_exam_result(request=request, course_id=course_id, submission_id=submission.id)
         return HttpResponseRedirect(reverse(viewname='onlinecourse:show_exam_result', args=(course.id, submission.id)))
 
@@ -140,20 +142,24 @@ def extract_answers(request):
     # Calculate the total score
 def show_exam_result(request, course_id, submission_id):
     course = get_object_or_404(Course, pk=course_id)
-    submission = get_object_or_404(Submission, pk=submission_id)
-    submitted_choices = submission.choices
-
     questions = Question.objects.filter(course=course)
-    for question in questions:
-        question_choices = Choices.objects.filter(question=question)
-        for question_choice in question_choices:
+    submission = get_object_or_404(Submission, pk=submission_id)
+    submitted_choices = list(map(lambda ch: ch.id, submission.choices.all()))
+    result = 0
+    for question in questions.iterator():
+        question_choices = Choice.objects.filter(question=question)
+        for question_choice in question_choices.iterator():
             if (question_choice.is_correct and question_choice.id in submitted_choices) or (not question_choice.is_correct and not question_choice.id in submitted_choices):
+                print(question.grade)
+                print(len(question_choices))
                 result += question.grade / len(question_choices)
     
     context = {}
-    context['grade'] = sum(q.grade for q in questions)
+    grade = sum(q.grade for q in questions)
+    context['grade'] = grade
+    context['min_grade'] = grade * 0.8
     context['result'] = result
     context['course'] = course
     context['selected_ids'] = submitted_choices
 
-    return render(request, 'onlinecourse/results.html', context)
+    return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
