@@ -14,7 +14,7 @@ body.login {
     font-size: 18px;
 }
 
-.login #header h1 a {
+.login #header h1 a { 
     color: #fff;
 }
 
@@ -30,6 +30,7 @@ body.login {
     width: 28em;
     min-width: 300px;
     margin: 100px auto;
+    height: auto;
 }
 
 .login #content-main {
